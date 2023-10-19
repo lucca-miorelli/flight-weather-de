@@ -1,0 +1,13 @@
+# Spark Application Properties
+spark.app.name           WeatherBatchETL
+
+# S3 Configuration
+spark.hadoop.fs.s3a.access.key      YOUR_ACCESS_KEY
+spark.hadoop.fs.s3a.secret.key      YOUR_SECRET_KEY
+spark.hadoop.fs.s3a.endpoint        s3.YOUR_REGION.amazonaws.com
+
+# Other Spark Properties
+spark.executor.instances  1
+spark.executor.memory     4g
+spark.executor.cores      1
+spark.driver.memory        4g
