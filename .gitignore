@@ -7,3 +7,8 @@
 
 *__pycache__/
 */logs/*
+
+flight-app/hive/conf/hive-site.xml
+flight-app/hive/conf/hdfs-site.xml
+
+flight-app/presto/etc/s3.properties
