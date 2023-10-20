@@ -2,3 +2,8 @@
 *response*
 
 *.env
+
+*spark-default.conf
+
+*__pycache__/
+*/logs/*
