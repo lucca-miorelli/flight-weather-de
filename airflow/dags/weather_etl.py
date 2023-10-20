@@ -1,3 +1,7 @@
+####################################################################################################
+##                                            IMPORTS                                             ##
+####################################################################################################
+
 from airflow.decorators import dag, task, task_group
 from airflow.utils.dates import days_ago
 import requests
@@ -5,6 +9,11 @@ from dotenv import load_dotenv
 import os
 import boto3
 import json
+
+
+####################################################################################################
+##                                             CONFIG                                             ##
+####################################################################################################
 
 load_dotenv()
 
@@ -23,9 +32,21 @@ ARGS = {
 }
 
 
-@dag(dag_id="weather_etl", schedule_interval="@hourly", start_date=days_ago(1), catchup=False,
-     tags=["weather", "etl"], default_args=ARGS)
+####################################################################################################
+##                                             DAG                                                ##
+####################################################################################################
+
+@dag(dag_id="weather_etl",
+     schedule_interval="@hourly",
+     start_date=days_ago(1),
+     catchup=False,
+     tags=["weather", "etl"],
+     default_args=ARGS)
 def weather_etl():
+
+    ###########################################################
+    ##                        TASKS                          ##
+    ###########################################################
 
     @task
     def extract():
@@ -91,8 +112,8 @@ def weather_etl():
 
         # Pull raw_file_path from XCom
         task_instance = kwargs['ti']
-        raw_file_path = task_instance.xcom_pull(task_ids='raw_data.load', key='raw_file_path')
-
+        raw_file_path = task_instance.xcom_pull(
+            task_ids='raw_data.load', key='raw_file_path')
 
         # Create a SparkSession
         spark = SparkSession.builder \
@@ -100,13 +121,12 @@ def weather_etl():
             .config("spark.jars", "file:/opt/bitnami/spark/jars/aws-java-sdk-1.11.995.jar,file:/opt/bitnami/spark/jars/hadoop-aws-3.3.1.jar") \
             .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:3.3.1") \
             .getOrCreate()
-            
+
         spark._jsc.hadoopConfiguration().set("fs.s3a.access.key", AWS_ACCESS_KEY_ID)
         spark._jsc.hadoopConfiguration().set("fs.s3a.secret.key", AWS_SECRET_ACCESS)
         spark._jsc.hadoopConfiguration().set(
             "fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"
         )
-
 
         print(f"Downstream task received raw_file_path: {raw_file_path}")
 
@@ -118,7 +138,7 @@ def weather_etl():
 
         with open("/tmp/tmp_file.json", "w") as f:
             f.write(df.toJSON().collect()[0])
-        
+
         spark.stop()
 
         return None
@@ -185,7 +205,8 @@ def weather_etl():
         flattened_df.printSchema()
 
         # Write to JSON
-        flattened_df.write.mode("overwrite").json("/tmp/tmp_file_transformed.json")
+        flattened_df.write.mode("overwrite").json(
+            "/tmp/tmp_file_transformed.json")
 
         spark.stop()
 
@@ -198,7 +219,8 @@ def weather_etl():
 
         # Pull raw_file_path from XCom
         task_instance = kwargs['ti']
-        raw_file_path = task_instance.xcom_pull(task_ids='raw_data.load', key='raw_file_path')
+        raw_file_path = task_instance.xcom_pull(
+            task_ids='raw_data.load', key='raw_file_path')
         file_name = raw_file_path.split("/")[-1]
 
         # Create a SparkSession
@@ -219,7 +241,8 @@ def weather_etl():
         transformed_df.show()
 
         # Write to parquet
-        transformed_df.write.mode("overwrite").parquet(processed_folder + file_name.split(".")[0] + '.parquet')
+        transformed_df.write.mode("overwrite").parquet(
+            processed_folder + file_name.split(".")[0] + '.parquet')
 
         spark.stop()
 
@@ -245,11 +268,19 @@ def weather_etl():
         response = write_to_parquet(flattened_df, processed_folder)
         delete_tmp_files(response)
 
+    ###########################################################
+    ##                        PIPELINE                       ##
+    ###########################################################
 
     result_of_raw_data = raw_data()
 
     # Set up the dependency
     result_of_raw_data >> process_data(result_of_raw_data)
+
+
+####################################################################################################
+##                                             MAIN                                               ##
+####################################################################################################
 
 
 dag = weather_etl()
